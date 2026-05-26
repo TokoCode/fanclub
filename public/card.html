@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Bellevue Gardens · Members Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Asap+Condensed:wght@400;600;700&family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    :root {
+      --bg:         #f1ead0;
+      --paper:      #fbf7e8;
+      --green:      #097d4c;
+      --green-dark: #053b27;
+      --green-mid:  #2a9966;
+      --green-light:#eff7f1;
+      --cream:      #f1ead0;
+      --tan:        #e6dcb5;
+      --tan-mid:    #c9bd8a;
+      --pink:       #ef90be;
+      --ink:        #1a1a17;
+      --ink-mid:    #3a3a35;
+      --ink-light:  #6b6b62;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: 'Asap Condensed', sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+
+    /* ── Header strip ── */
+    .header {
+      width: 100%;
+      background: var(--green-dark);
+      padding: 14px 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-logo {
+      font-family: 'Anton', sans-serif;
+      font-size: 18px;
+      color: var(--cream);
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+
+    .header-sub {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(241,234,208,0.55);
+      margin-top: 2px;
+    }
+
+    .header-pill {
+      background: var(--green-mid);
+      color: var(--cream);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 100px;
+    }
+
+    /* ── Main card ── */
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--paper);
+      padding: 24px 20px 28px;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.45s ease forwards 0.1s;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Member row ── */
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .avatar span {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cream);
+      letter-spacing: 0.04em;
+    }
+
+    .member-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+
+    .member-since {
+      font-size: 12px;
+      color: var(--ink-light);
+      margin-top: 2px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--tan);
+      margin: 0 0 20px;
+    }
+
+    /* ── Section label ── */
+    .eyebrow {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    /* ── Discount cards ── */
+    .discount-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .discount-card {
+      background: var(--green-dark);
+      border-radius: 10px;
+      padding: 16px 12px 12px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeUp 0.4s ease forwards;
+    }
+
+    .discount-card:nth-child(1) { animation-delay: 0.2s; }
+    .discount-card:nth-child(2) { animation-delay: 0.3s; }
+
+    .discount-amount {
+      font-family: 'Anton', sans-serif;
+      font-size: 38px;
+      color: var(--cream);
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+
+    .discount-off {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(241,234,208,0.5);
+      margin-top: 3px;
+    }
+
+    .discount-type {
+      font-family: 'Anton', sans-serif;
+      font-size: 16px;
+      color: var(--pink);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(241,234,208,0.12);
+    }
+
+    /* ── Barcode block ── */
+    .barcode-block {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--tan);
+      padding: 16px 12px 10px;
+      text-align: center;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeUp 0.4s ease forwards 0.4s;
+    }
+
+    .barcode-block svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .barcode-id {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--ink-light);
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    /* ── Tagline ── */
+    .tagline {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 14px;
+      color: var(--ink-mid);
+      text-align: center;
+      line-height: 1.6;
+      opacity: 0;
+      animation: fadeUp 0.4s ease forwards 0.5s;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      width: 100%;
+      max-width: 420px;
+      background: var(--green-dark);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer span, .footer a {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .footer span { color: rgba(241,234,208,0.5); }
+    .footer a { color: var(--pink); text-decoration: none; }
+
+    /* ── Error state ── */
+    .error-state {
+      width: 100%;
+      max-width: 420px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+
+    .error-state h2 {
+      font-family: 'Anton', sans-serif;
+      font-size: 36px;
+      color: var(--green-dark);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .error-state p {
+      font-size: 15px;
+      color: var(--ink-light);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="header-logo">Bellevue Gardens.</div>
+      <div class="header-sub">Members Card</div>
+    </div>
+    <div class="header-pill">Member</div>
+  </div>
+
+  <div id="app"></div>
+
+  <div class="footer">
+    <span>140 Woburn Rd · Lower Hutt</span>
+    <a href="tel:0456970100">04 569 7010</a>
+  </div>
+
+  <script>
+    // ── Grab token from URL: /card.html?t=TOKEN or /members/TOKEN ──
+    const params  = new URLSearchParams(window.location.search);
+    const token   = params.get('t') || window.location.pathname.split('/').pop();
+    const app     = document.getElementById('app');
+
+    async function loadMember() {
+      try {
+        const res  = await fetch(`/api/member?t=${encodeURIComponent(token)}`);
+        if (!res.ok) throw new Error('not found');
+        const m    = await res.json();
+        renderCard(m);
+      } catch {
+        renderError();
+      }
+    }
+
+    function initials(name) {
+      return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    function renderCard(m) {
+      app.innerHTML = `
+        <div class="card">
+          <div class="member-row">
+            <div class="avatar"><span>${initials(m.name)}</span></div>
+            <div>
+              <div class="member-name">${m.name}</div>
+              <div class="member-since">Member since ${m.joined}</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="eyebrow">Your member discounts</div>
+          <div class="discount-grid">
+            <div class="discount-card">
+              <div class="discount-amount">$1.50</div>
+              <div class="discount-off">off every</div>
+              <div class="discount-type">Jug</div>
+            </div>
+            <div class="discount-card">
+              <div class="discount-amount">50c</div>
+              <div class="discount-off">off every</div>
+              <div class="discount-type">Pint</div>
+            </div>
+          </div>
+
+          <div class="eyebrow">Scan at the bar</div>
+          <div class="barcode-block">
+            <svg id="barcode"></svg>
+            <div class="barcode-id">BLV · ${m.barcode}</div>
+          </div>
+
+          <p class="tagline">Around the corner in Lower Hutt since 1917.</p>
+        </div>
+      `;
+
+      JsBarcode(document.getElementById('barcode'), 'BLV' + m.barcode, {
+        format:       'CODE128',
+        width:        2.2,
+        height:       70,
+        displayValue: false,
+        margin:       4,
+        background:   '#ffffff',
+        lineColor:    '#1a1a17'
+      });
+    }
+
+    function renderError() {
+      app.innerHTML = `
+        <div class="error-state">
+          <h2>Card not found.</h2>
+          <p>This link may be invalid or expired.<br>Ask at the bar to get your members card.</p>
+        </div>
+      `;
+    }
+
+    if (token && token.length > 3) {
+      loadMember();
+    } else {
+      renderError();
+    }
+  </script>
+</body>
+</html>
