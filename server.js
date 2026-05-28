@@ -179,6 +179,7 @@ http.createServer(async (req, res) => {
 
     // Send SMS if phone provided and Twilio configured
     let smsSent = false;
+    console.log('SMS attempt:', { phone: body.phone, hasSID: !!TWILIO_SID, hasBase: !!BASE_URL });
     if (body.phone && TWILIO_SID && BASE_URL) {
       const cardUrl = `${BASE_URL}/card.html?t=${member.token}`;
       const smsBody = smsMessage(member.name, venue.name, cardUrl);
