@@ -1,58 +1,14 @@
-// Multi-Venue Loyalty Card Server — with Twilio SMS
+// Multi-Venue Loyalty Card Server
 const http   = require('http');
 const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
-const https  = require('https');
 const VENUES = require('./venues');
 
-const PORT            = process.env.PORT || 3000;
-const ADMIN_PASSWORD  = process.env.ADMIN_PASSWORD || 'bellevue2024';
-const TWILIO_SID      = process.env.TWILIO_SID || '';
-const TWILIO_TOKEN    = process.env.TWILIO_TOKEN || '';
-const TWILIO_FROM     = process.env.TWILIO_FROM || '';
-const BASE_URL        = process.env.BASE_URL || '';
-const DATA_DIR        = path.join(__dirname, 'data');
-const PUBLIC_DIR      = path.join(__dirname, 'public');
-
-// ── SMS ───────────────────────────────────────────────────────────────────────
-function sendSMS(to, body) {
-  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
-    console.log('SMS skipped — Twilio not configured');
-    return Promise.resolve({ ok: false, reason: 'not configured' });
-  }
-
-  // Format NZ numbers: 021... → +6421...
-  let phone = to.replace(/\s/g, '');
-  if (phone.startsWith('0')) phone = '+64' + phone.slice(1);
-
-  const data = new URLSearchParams({ To: phone, From: TWILIO_FROM, Body: body }).toString();
-  const auth  = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
-
-  return new Promise((resolve) => {
-    const req = https.request({
-      hostname: 'api.twilio.com',
-      path:     `/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
-      method:   'POST',
-      headers:  { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(data) }
-    }, (res) => {
-      let body = '';
-      res.on('data', c => body += c);
-      res.on('end', () => {
-        const parsed = JSON.parse(body);
-        if (parsed.sid) { console.log(`SMS sent to ${phone}: ${parsed.sid}`); resolve({ ok: true }); }
-        else { console.error('SMS error:', parsed); resolve({ ok: false, error: parsed.message }); }
-      });
-    });
-    req.on('error', e => { console.error('SMS request error:', e); resolve({ ok: false, error: e.message }); });
-    req.write(data);
-    req.end();
-  });
-}
-
-function smsMessage(memberName, venueName, cardUrl) {
-  return `Hey ${memberName.split(' ')[0]}! Here's your ${venueName} members card — show it at the bar for your discount 🍺\n${cardUrl}`;
-}
+const PORT           = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'bellevue2024';
+const DATA_DIR       = path.join(__dirname, 'data');
+const PUBLIC_DIR     = path.join(__dirname, 'public');
 
 // ── Data helpers ──────────────────────────────────────────────────────────────
 function dataFile(venueId) { return path.join(DATA_DIR, `${venueId}.json`); }
@@ -143,11 +99,6 @@ http.createServer(async (req, res) => {
     return json(res, { ok: false }, 401);
   }
 
-  // Admin: SMS config check
-  if (p === '/api/admin/sms-enabled' && method === 'GET' && isAuthed(req)) {
-    return json(res, { enabled: !!(TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM && BASE_URL) });
-  }
-
   // Protected routes
   if (p.startsWith('/api/admin/') && !isAuthed(req)) return json(res, { error: 'unauthorized' }, 401);
 
@@ -171,23 +122,25 @@ http.createServer(async (req, res) => {
       name:    body.name  || 'Unknown',
       email:   body.email || '',
       phone:   body.phone || '',
+      dob:     body.dob   || '',
       barcode: nextBarcode(members),
       joined:  joinedNow()
     };
     members.unshift(member);
     saveMembers(venueId, members);
+    return json(res, { member });
+  }
 
-    // Send SMS if phone provided and Twilio configured
-    let smsSent = false;
-    console.log('SMS attempt:', { phone: body.phone, hasSID: !!TWILIO_SID, hasBase: !!BASE_URL });
-    if (body.phone && TWILIO_SID && BASE_URL) {
-      const cardUrl = `${BASE_URL}/card.html?t=${member.token}`;
-      const smsBody = smsMessage(member.name, venue.name, cardUrl);
-      const result  = await sendSMS(body.phone, smsBody);
-      smsSent = result.ok;
-    }
-
-    return json(res, { member, smsSent });
+  // PUT update member
+  if (p.startsWith('/api/admin/members/') && method === 'PUT') {
+    const parts    = p.split('/');
+    const venueId  = parts[4];
+    const memberId = parts[5];
+    const body     = await readBody(req);
+    let members    = loadMembers(venueId);
+    members        = members.map(m => m.id === memberId ? { ...m, ...body, id: m.id, token: m.token, barcode: m.barcode, joined: m.joined } : m);
+    saveMembers(venueId, members);
+    return json(res, { ok: true });
   }
 
   // DELETE member
@@ -201,25 +154,10 @@ http.createServer(async (req, res) => {
     return json(res, { ok: true });
   }
 
-  // POST resend SMS
-  if (p.startsWith('/api/admin/resend-sms/') && method === 'POST') {
-    const parts    = p.split('/');
-    const venueId  = parts[4];
-    const memberId = parts[5];
-    const venue    = getVenue(venueId);
-    const members  = loadMembers(venueId);
-    const member   = members.find(m => m.id === memberId);
-    if (!member || !member.phone) return json(res, { ok: false, error: 'No phone number' });
-    const cardUrl  = `${BASE_URL}/card.html?t=${member.token}`;
-    const smsBody  = smsMessage(member.name, venue.name, cardUrl);
-    const result   = await sendSMS(member.phone, smsBody);
-    return json(res, result);
-  }
-
   res.writeHead(404); res.end('Not found');
 
 }).listen(PORT, () => {
-  console.log(`\n🌿 Multi-Venue Loyalty Server (SMS ${TWILIO_SID ? 'enabled' : 'disabled'})`);
+  console.log(`\n🌿 Multi-Venue Loyalty Server`);
   console.log(`   Running on http://localhost:${PORT}`);
   console.log(`   Admin: http://localhost:${PORT}/admin`);
   console.log(`   Venues: ${VENUES.map(v => v.name).join(', ')}\n`);
